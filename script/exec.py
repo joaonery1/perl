@@ -162,26 +162,10 @@ for vGlyph in lstGlyph:
         
 
     elif vGlyph.func == 'vglClErode': #Function Erode
-
-
         vglClErode_img_input = getImageInputByIdName(vGlyph.glyph_id, 'img_input')
         vglClErode_img_output = getImageInputByIdName(vGlyph.glyph_id, 'img_output')
-       
         vl.vglCheckContext(vglClErode_img_output,vl.VGL_CL_CONTEXT())
         vglClErode(vglClErode_img_input, vglClErode_img_output, tratnum(vGlyph.lst_par[0].getValue()),np.uint32(vGlyph.lst_par[1].getValue()), np.uint32(vGlyph.lst_par[2].getValue()))
-        
-        #Runtime
-        vl.get_ocl().commandQueue.flush()
-        t0 = datetime.now()
-        for i in range( nSteps ):
-          vglClErode(vglClErode_img_input, vglClErode_img_output, tratnum(vGlyph.lst_par[0].getValue()),np.uint32(vGlyph.lst_par[1].getValue()), np.uint32(vGlyph.lst_par[2].getValue()))
-        vl.get_ocl().commandQueue.finish()
-        t1 = datetime.now()
-        t = t1 - t0
-        media = (t.total_seconds() * 1000) / nSteps
-        msg = msg + "Tempo médio de " +str(nSteps)+ " execuções do método vglClErode: " + str(media) + " ms\n"
-        total = total + media
-        # Actions after glyph execution
         GlyphExecutedUpdate(vGlyph.glyph_id, vglClErode_img_output)
 
     elif vGlyph.func == 'vglCl3dErode': #Function Erode
@@ -505,19 +489,6 @@ for vGlyph in lstGlyph:
         # Apply Threshold function
         vglClThreshold(vglClThreshold_img_input, vglClThreshold_img_output, np.float32(vGlyph.lst_par[0].getValue()))
 
-        #Runtime
-        vl.get_ocl().commandQueue.flush()
-        t0 = datetime.now()
-
-        for i in range( nSteps ):
-          vglClThreshold(vglClThreshold_img_input, vglClThreshold_img_output, np.float32(vGlyph.lst_par[0].getValue()))
-        vl.get_ocl().commandQueue.finish()
-        t1 = datetime.now()
-        diff = t1 - t0
-        med = (diff.total_seconds() * 1000) / nSteps
-        msg = msg + "Tempo médio de " +str(nSteps)+ " execuções do método vglClThreshold: " + str(media) + " ms\n"
-        total = total + media
-        # Actions after glyph execution
         GlyphExecutedUpdate(vGlyph.glyph_id, vglClThreshold_img_output)
     
 

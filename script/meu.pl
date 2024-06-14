@@ -797,64 +797,56 @@ sub PrintPythonFile {
   open PYTHON, ">>", "$output.py";
 
   print PYTHON "\"\"\"\n    $comment    \n\"\"\"\n";
-  # aqui seria def => elif vGlyph.func == '$basename':
   print PYTHON "elif vGlyph.func == '$basename':\n";
-  
-  # Iterar sobre os tipos para a definição dos parâmetros
-  for ($i = 0; $i <= $#type; $i++){
-    if ( ($semantics[$i] eq "__read_only") or ($semantics[$i] eq "__write_only") or ($semantics[$i] eq "__global") ){
-      if ( ($type[$i] eq "image2d_t") or ($type[$i] eq "image3d_t") ){
-        $vetor_ou_image = "image";
-        $type[$i] = "VglImage*";
-      } elsif ( ($type[$i] eq "char*") or ($type[$i] eq "int*") or ($type[$i] eq "unsigned char*") or ($type[$i] eq "unsigned int*") ){
-        $vetor_ou_image = "vetor";
-        $type[$i] = "VglImage*";
-      }
-    }
-    else{
-      $type[$i] =~ s#^\s*((unsigned)?\s*[a-zA-Z_][a-zA-Z0-9_]*)##;
-      $type[$i] = $1;
-    }
-    if ($type[$i] eq ""){
-      $type[$i] = "";
-    }
-  }
 
-  # Gerar a linha para obter as imagens de entrada
+  # Gerar a linha para obter as imagens de entrada e saída
   for ($i = 0; $i <= $#type; $i++){
     if ($type[$i] eq "VglImage*"){
-      print PYTHON "    ${basename}_$variable[$i] = getImageInputByIdName(vGlyph.glyph_id, '$variable[$i]')\n";
+      if ($semantics[$i] eq "__read_only") {
+        print PYTHON "    ${basename}_img_input = getImageInputByIdName(vGlyph.glyph_id, '$variable[$i]');\n";
+      } elsif ($semantics[$i] eq "__write_only") {
+        print PYTHON "    ${basename}_img_output = getImageInputByIdName(vGlyph.glyph_id, '$variable[$i]');\n";
+      }
     }
   }
 
   # Verificar o contexto da imagem de saída
   for ($i = 0; $i <= $#type; $i++){
     if ($semantics[$i] eq "__write_only"){
-      print PYTHON "    vl.vglCheckContext(${basename}_$variable[$i], vl.VGL_CL_CONTEXT())\n";
+      print PYTHON "    vl.vglCheckContext(${basename}_img_output, vl.VGL_CL_CONTEXT())\n";
     }
   }
 
   # Gerar a chamada da função com os parâmetros corretos
-  my $function_call = "    $basename(";
-  my @params;
-  for ($i = 0; $i <= $#variable; $i++) {
-    if ($i < 2) {
-      push @params, "${basename}_$variable[$i]";
-    } else {
-      push @params, "tratnum(vGlyph.lst_par[0].getValue())" if $i == 2;
-      push @params, "np.uint32(vGlyph.lst_par[1].getValue())" if $i == 3;
-      push @params, "np.uint32(vGlyph.lst_par[2].getValue())" if $i == 4;
+  if ($basename eq "vglClThreshold") {
+    print PYTHON "    $basename(${basename}_img_input, ${basename}_img_output, np.float32(vGlyph.lst_par[0].getValue()))\n";
+  } else {
+    my $function_call = "    $basename(";
+    my @params;
+    for ($i = 0; $i <= $#variable; $i++) {
+      if ($semantics[$i] eq "__read_only") {
+        push @params, "${basename}_img_input";
+      } elsif ($semantics[$i] eq "__write_only") {
+        push @params, "${basename}_img_output";
+      } else {
+        if ($i == 2) {
+          push @params, "tratnum(vGlyph.lst_par[0].getValue())";
+        } elsif ($i == 3) {
+          push @params, "np.uint32(vGlyph.lst_par[1].getValue())";
+        } elsif ($i == 4) {
+          push @params, "np.uint32(vGlyph.lst_par[2].getValue())";
+        }
+      }
     }
+    $function_call .= join(", ", @params) . ")";
+    print PYTHON "$function_call\n";
   }
-  $function_call .= join(", ", @params) . ")";
-  print PYTHON "$function_call\n";
 
-  # Adicionar a linha GlyphExecutedUpdate
+  # Adicionar a linha GlyphExecutedUpdate usando a variável correta
   print PYTHON "    GlyphExecutedUpdate(vGlyph.glyph_id, ${basename}_img_output)\n";
 
   close PYTHON;
 }
-
 
 
 
