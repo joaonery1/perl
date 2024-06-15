@@ -1,0 +1,1 @@
+perl {file.pl} -o {out} -p CL CL/*.cl
